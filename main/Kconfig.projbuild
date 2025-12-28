@@ -1,0 +1,17 @@
+menu "MQTT Config"
+    config MQTT_USERNAME
+        string "MQTT Username"
+
+    config MQTT_PASSWORD
+        string "MQTT Password"
+
+    config MQTT_BROKER_ADDRESS
+        string "MQTT Broker Address"
+        help
+            Full URI with protocol and port for connection to the MQTT broker
+
+    config MQTT_CERT_COMMON_NAME
+        string "MQTT certificate common name"
+        help
+            Common name of the broker for TLS verification
+endmenu

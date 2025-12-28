@@ -1,0 +1,39 @@
+{
+  "dev": {
+    "ids": "rf-bridge-2",
+    "name": "RF Bridge 2",
+    "sw": "1.1",
+    "hw": "03/25"
+  },
+  "o": {
+    "name": "Home Assistant RF Bridge",
+    "sw_version": "1.1",
+    "support_url": "https://github.com/grimsteel/homeassistant-rf-bridge"
+  },
+  "cmps": {
+    "onboard_led": {
+      "p": "light",
+      "unique_id": "onboard_led",
+      "command_topic": "devices/rf_bridge_2/onboard_led/set",
+      "state_topic": "devices/rf_bridge_2/onboard_led/state",
+      "name": "Onboard LED",
+      "retain": true
+    },
+    "light_channel_e": {
+      "p": "light",
+      "unique_id": "light_channel_e",
+      "command_topic": "devices/rf_bridge_2/light_channel_e/set",
+      "state_topic": "devices/rf_bridge_2/light_channel_e/state",
+      "name": "Channel E Light",
+      "retain": true
+    },
+    "light_channel_a": {
+      "p": "light",
+      "unique_id": "light_channel_a",
+      "command_topic": "devices/rf_bridge_2/light_channel_a/set",
+      "state_topic": "devices/rf_bridge_2/light_channel_a/state",
+      "name": "Channel A Light",
+      "retain": true
+    }
+  }
+}

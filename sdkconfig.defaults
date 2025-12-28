@@ -1,0 +1,12 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) 5.4.2 Project Minimal Configuration
+#
+CONFIG_IDF_TARGET="esp32s2"
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_MQTT_USERNAME="rf-bridge-2"
+CONFIG_MQTT_PASSWORD=""
+CONFIG_MQTT_BROKER_ADDRESS=""
+CONFIG_MQTT_CERT_COMMON_NAME=""
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_ESP_CONSOLE_USB_CDC=y
