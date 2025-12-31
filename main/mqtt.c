@@ -70,10 +70,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     break;
 
   case MQTT_EVENT_DATA:
+    ESP_LOGD(TAG, "MQTT message. | Message(%d): %.*s | Topic(%d): %.*s", event->data_len, event->data_len, event->data,  event->topic_len, event->topic_len, event->topic);
     // check equal to 39 chars
     if (event->topic_len == MQTT_SET_LIGHT_TOPIC_LEN && strncasecmp(event->topic, MQTT_SET_LIGHT_PREFIX, MQTT_SET_LIGHT_TOPIC_LEN_PREFIX) == 0) {
         char light_id = event->topic[MQTT_SET_LIGHT_TOPIC_LEN_PREFIX];
-        bool turn_on = event->data_len == 2 && strncasecmp(event->data, "on", 2);
+        bool turn_on = event->data_len == 2 && strncasecmp(event->data, "on", 2) == 0;
         event_queue_message_t evt = {
             .data.mqtt_message.light_id = light_id,
             .data.mqtt_message.turn_on = turn_on,

@@ -71,9 +71,9 @@ esp_err_t init_cc1101(cc1101_device_t** cc1101_handle) {
 
   cc1101_device_cfg_t cfg = {
     .spi_host = SPI2_HOST,
-    .gdo0_io_num = GPIO_NUM_33,
-    .gdo2_io_num = GPIO_NUM_21,
-    .cs_io_num = GPIO_NUM_34,
+    .gdo0_io_num = GPIO_NUM_8,
+    .gdo2_io_num = GPIO_NUM_9,
+    .cs_io_num = GPIO_NUM_10,
     .miso_io_num = GPIO_NUM_13,
     // Check your hardware for setting the correct value!
     .crystal_freq = CC1101_CRYSTAL_26MHZ

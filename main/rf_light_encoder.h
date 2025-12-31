@@ -6,11 +6,21 @@
 #include "esp_err.h"
 #include "hal/rmt_types.h"
 
+typedef struct {
+    char channel;
+    bool on;
+} rf_light_payload_t;
+
 typedef uint16_t rf_light_message_t;
 #define RF_LIGHT_PAYLOAD_ZERO_DURATION_0  263
 #define RF_LIGHT_PAYLOAD_ZERO_DURATION_1  (843-263)
 #define RF_LIGHT_PAYLOAD_ONE_DURATION_0   685
 #define RF_LIGHT_PAYLOAD_ONE_DURATION_1   (843-685)
+
+#define RF_LIGHT_PAYLOAD_ZERO_DECODE_DURATION_0  250
+#define RF_LIGHT_PAYLOAD_ZERO_DECODE_DURATION_1  600
+#define RF_LIGHT_PAYLOAD_ONE_DECODE_DURATION_0   650
+#define RF_LIGHT_PAYLOAD_ONE_DECODE_DURATION_1   200
 
 /// Defines what has _already been sent_
 typedef enum {
@@ -22,7 +32,8 @@ typedef enum {
     RF_LIGHT_ENCODER_STATE_DELAY_1_DONE,
     RF_LIGHT_ENCODER_STATE_PAYLOAD_2_DONE,
     RF_LIGHT_ENCODER_STATE_DELAY_2_DONE,
-    RF_LIGHT_ENCODER_STATE_PAYLOAD_3_DONE
+    RF_LIGHT_ENCODER_STATE_PAYLOAD_3_DONE,
+    RF_LIGHT_ENCODER_STATE_DELAY_3_DONE,
 } rf_light_encoder_state_t;
 
 typedef struct {
@@ -38,3 +49,6 @@ typedef struct {
 } rf_light_encoder_t;
 
 esp_err_t rf_light_encoder_new(rmt_encoder_handle_t *encoder);
+
+uint16_t encode_rf_light_payload(rf_light_payload_t* payload);
+int decode_rf_light_payload(uint16_t message, rf_light_payload_t* payload);

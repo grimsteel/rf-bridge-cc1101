@@ -76,6 +76,9 @@ static size_t rf_light_encode(rmt_encoder_t* encoder, rmt_channel_handle_t chann
         if (state & RMT_ENCODING_MEM_FULL) break;
     // fall-through
     case RF_LIGHT_ENCODER_STATE_DELAY_0_DONE:
+        state |= RMT_ENCODING_COMPLETE;
+        rf_light_encoder->state = RF_LIGHT_ENCODER_STATE_RESET;
+        break;
         encode_payload(channel, message, rf_light_encoder, &state, &encoded_symbols);
         if (state & RMT_ENCODING_MEM_FULL) break;
     // fall-through
@@ -96,6 +99,10 @@ static size_t rf_light_encode(rmt_encoder_t* encoder, rmt_channel_handle_t chann
         if (state & RMT_ENCODING_MEM_FULL) break;
     // fall-through
     case RF_LIGHT_ENCODER_STATE_PAYLOAD_3_DONE:
+        encode_delay(channel, rf_light_encoder, &state, &encoded_symbols);
+        if (state & RMT_ENCODING_MEM_FULL) break;
+    // fall-through
+    case RF_LIGHT_ENCODER_STATE_DELAY_3_DONE:
         state |= RMT_ENCODING_COMPLETE;
         rf_light_encoder->state = RF_LIGHT_ENCODER_STATE_RESET;
     }
@@ -190,4 +197,54 @@ esp_err_t rf_light_encoder_new(rmt_encoder_handle_t *encoder) {
         free(rf_light_encoder);
     }
     return ret;
+}
+
+uint16_t encode_rf_light_payload(rf_light_payload_t* payload) {
+    uint16_t message = 0x0000;
+    switch (payload->channel) {
+    case 'a':
+        message |= 0x0800;
+        break;
+    case 'd':
+        message |= 0x0100;
+        break;
+    case 'e':
+        message |= 0x0C00;
+        break;
+    }
+    return message | 0x00AA | (payload->on ? 0x8000 : 0x4000);
+}
+int decode_rf_light_payload(uint16_t message, rf_light_payload_t* payload) {
+    // all messages end with 0xaa
+    if ((message & 0xff) != 0xaa) return -1;
+    // check third nybble
+    switch ((message >> 8) & 0xf) {
+        case 0x8:
+            payload->channel = 'a';
+            break;
+        case 0x1:
+            payload->channel = 'd';
+            break;
+        case 0xc:
+            payload->channel = 'e';
+            break;
+        default:
+            // invalid
+            return -1;
+    }
+
+    // check 4th nybble
+    switch ((message >> 12) & 0xf) {
+        case 0x8:
+            payload->on = true;
+            break;
+        case 0x4:
+            payload->on = false;
+            break;
+        default:
+            // invalid
+            return -1;
+    }
+
+    return 0;
 }

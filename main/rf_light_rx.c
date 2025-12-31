@@ -7,6 +7,7 @@
 #include <freertos/event_groups.h>
 #include "esp_check.h"
 #include "event_queue.h"
+#include "rom/ets_sys.h"
 
 #define TAG "RF Light RMT RX"
 
@@ -36,8 +37,8 @@ static inline bool rf_light_check_in_range(uint32_t signal_duration, uint32_t sp
  */
 static bool rf_light_parse_logic0(rmt_symbol_word_t *rmt_rf_light_symbols, bool last)
 {
-    return rf_light_check_in_range(rmt_rf_light_symbols->duration0, RF_LIGHT_PAYLOAD_ZERO_DURATION_0) &&
-      (last || rf_light_check_in_range(rmt_rf_light_symbols->duration1, RF_LIGHT_PAYLOAD_ZERO_DURATION_1));
+    return rf_light_check_in_range(rmt_rf_light_symbols->duration0, RF_LIGHT_PAYLOAD_ZERO_DECODE_DURATION_0) &&
+      (last || rf_light_check_in_range(rmt_rf_light_symbols->duration1, RF_LIGHT_PAYLOAD_ZERO_DECODE_DURATION_1));
 }
 
 /**
@@ -45,9 +46,9 @@ static bool rf_light_parse_logic0(rmt_symbol_word_t *rmt_rf_light_symbols, bool 
  */
 static bool rf_light_parse_logic1(rmt_symbol_word_t *rmt_rf_light_symbols, bool last)
 {
-    return rf_light_check_in_range(rmt_rf_light_symbols->duration0, RF_LIGHT_PAYLOAD_ONE_DURATION_0) &&
+    return rf_light_check_in_range(rmt_rf_light_symbols->duration0, RF_LIGHT_PAYLOAD_ONE_DECODE_DURATION_0) &&
       // don't check duration1 if this is the last bit
-      (last || rf_light_check_in_range(rmt_rf_light_symbols->duration1, RF_LIGHT_PAYLOAD_ONE_DURATION_1));
+      (last || rf_light_check_in_range(rmt_rf_light_symbols->duration1, RF_LIGHT_PAYLOAD_ONE_DECODE_DURATION_1));
 }
 
 // Parse an entire frame for any messages within
@@ -63,10 +64,6 @@ static void parse_rmt_frame(size_t num_items, rmt_symbol_word_t* x, QueueHandle_
     } else if (rf_light_parse_logic1(&x[i], bit == 15)) {
       message |= (1 << (bit++));
     } else {
-      if (bit > 2) {
-        ESP_LOGW(TAG, "Failed to receive on bit %d", bit);
-      }
-
       // fail
       bit = 0;
     }
@@ -122,7 +119,6 @@ esp_err_t rf_light_initialize_rx(gpio_num_t rx_gpio_num, rf_light_rx_data_t* rx_
   ESP_RETURN_ON_ERROR(rmt_new_rx_channel(&rx_channel_cfg, &rx_data->channel), TAG, "Failed to initialize channel");
 
   // Initialize the data queue
-  rx_data->parsed_message_queue = xQueueCreate(PARSED_MESSAGE_QUEUE_LENGTH, sizeof(event_queue_message_t));
   assert(rx_data->parsed_message_queue);
 
   // Setup the callbacks

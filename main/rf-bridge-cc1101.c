@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include "esp_system.h"
 #include "event_queue.h"
 #include "freertos/idf_additions.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_netif.h"
+#include "rf_light_encoder.h"
 #include "rf_light_tx.h"
 #include "wifi.h"
 #include "mqtt.h"
@@ -17,6 +19,8 @@
 
 void app_main(void)
 {
+    ESP_LOGI(TAG, "last reset reason %d", esp_reset_reason());
+
   // general ESP32 initializations
   ESP_ERROR_CHECK(nvs_flash_init());
   ESP_ERROR_CHECK(esp_netif_init());
@@ -43,59 +47,53 @@ void app_main(void)
   cc1101_device_t* cc1101;
   ESP_ERROR_CHECK(init_cc1101(&cc1101));
 
+  QueueHandle_t message_queue = xQueueCreate(PARSED_MESSAGE_QUEUE_LENGTH, sizeof(event_queue_message_t));
+
   // init RMT receiver and start RX
   rf_light_rx_data_t rx_data = {0};
-  ESP_ERROR_CHECK(rf_light_initialize_rx(GPIO_NUM_33, &rx_data));
+  rx_data.parsed_message_queue = message_queue;
+  ESP_ERROR_CHECK(rf_light_initialize_rx(GPIO_NUM_9, &rx_data));
   rf_light_tx_t tx = {0};
-  ESP_ERROR_CHECK(rf_light_initialize_tx(&tx, GPIO_NUM_33));
+  ESP_ERROR_CHECK(rf_light_initialize_tx(&tx, GPIO_NUM_8));
 
-  esp_mqtt_client_handle_t mqtt = mqtt_app_start(rx_data.parsed_message_queue);
+  esp_mqtt_client_handle_t mqtt = mqtt_app_start(message_queue);
 
   ESP_ERROR_CHECK(cc1101_start_rx(cc1101));
-  //ESP_ERROR_CHECK(cc1101_start_tx(cc1101));
-  //
   cc1101_debug_print_regs(cc1101);
 
   event_queue_message_t message_payload;
+
+  rf_light_payload_t decoded_message;
 
   gpio_set_level(GPIO_NUM_14, 0);
 
   bool on = false;
 
   while (1) {
-    /*ESP_LOGI(TAG, "send tx");
-    for (int i = 0; i < 10; i++) {
-        ESP_ERROR_CHECK(rf_light_tx_send(&tx, on ? 0x8CAA : 0x4CAA));
-        vTaskDelay(1);
-    }
-    on = !on;
-    vTaskDelay(5000 / portTICK_PERIOD_MS);*/
     // wait for RX done signal
-    if (xQueueReceive(rx_data.parsed_message_queue, &message_payload, portMAX_DELAY)) {
+    if (xQueueReceive(message_queue, &message_payload, portMAX_DELAY)) {
         if (message_payload.type == EVENT_QUEUE_MESSAGE_RF_LIGHT) {
-            ESP_LOGI(TAG, "Received %04X", message_payload.data.rf_light_message);
-            switch (message_payload.data.rf_light_message) {
-            case 0x8CAA:
-                esp_mqtt_client_publish(mqtt, "devices/rf_bridge_2/light_channel_e/state", "ON", 0, 0, 0);
-                break;
-            case 0x4CAA:
-                esp_mqtt_client_publish(mqtt, "devices/rf_bridge_2/light_channel_e/state", "OFF", 0, 0, 0);
-                break;
 
-            case 0x88AA:
-                esp_mqtt_client_publish(mqtt, "devices/rf_bridge_2/light_channel_a/state", "ON", 0, 0, 0);
-                break;
-            case 0x48AA:
-                esp_mqtt_client_publish(mqtt, "devices/rf_bridge_2/light_channel_a/state", "OFF", 0, 0, 0);
-                break;
+            if (decode_rf_light_payload(message_payload.data.rf_light_message, &decoded_message)) {
+                // error
+                ESP_LOGW(TAG, "Received invalid RF Light message: %04X", message_payload.data.rf_light_message);
+            } else {
+                ESP_LOGI(TAG, "Received RF light message | Channel: %c | On: %d", decoded_message.channel, decoded_message.on);
+
+                char topic[42];
+                snprintf(topic, 42, "devices/rf_bridge_2/light_channel_%c/state", decoded_message.channel);
+
+                esp_mqtt_client_publish(mqtt, topic, decoded_message.on ? "ON" : "OFF", 0, 0, 0);
             }
         } else if (message_payload.type == EVENT_QUEUE_MESSAGE_MQTT) {
-            ESP_LOGI(TAG, "Received %c %b", message_payload.data.mqtt_message.light_id, message_payload.data.mqtt_message.turn_on);
+            ESP_LOGI(TAG, "Received MQTT message | Channel: %c | On: %d", message_payload.data.mqtt_message.light_id, message_payload.data.mqtt_message.turn_on);
+            decoded_message.channel = message_payload.data.mqtt_message.light_id;
+            decoded_message.on = message_payload.data.mqtt_message.turn_on;
+            // encode
+            rf_light_message_t message = encode_rf_light_payload(&decoded_message);
+            ESP_LOGI(TAG, "Sending message %04X", message);
             ESP_ERROR_CHECK(cc1101_start_tx(cc1101));
-            for (int i = 0; i < 10; i++) {
-                ESP_ERROR_CHECK(rf_light_tx_send(&tx, message_payload.data.mqtt_message.turn_on ? 0x8CAA : 0x4CAA));
-                vTaskDelay(1);
-            }
+            ESP_ERROR_CHECK(rf_light_tx_send(&tx, message));
             vTaskDelay(2000 / portTICK_PERIOD_MS);
             ESP_ERROR_CHECK(cc1101_start_rx(cc1101));
         }

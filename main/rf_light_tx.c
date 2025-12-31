@@ -35,7 +35,7 @@ esp_err_t rf_light_initialize_tx(rf_light_tx_t* rf_light_tx, gpio_num_t tx_gpio_
 
 esp_err_t rf_light_tx_send(rf_light_tx_t *rf_light_tx, rf_light_message_t message) {
     rmt_transmit_config_t transmit_config = {
-        .loop_count = 0,
+        .loop_count = 10,
     };
     ESP_RETURN_ON_ERROR(rmt_transmit(rf_light_tx->channel, rf_light_tx->encoder, &message, sizeof(rf_light_message_t), &transmit_config), TAG, "Failed to send tx");
     return ESP_OK;
